@@ -56,3 +56,26 @@ To protect your data, follow these rules before checking in code:
 - **Never commit `.env`**: This file contains your real URLs and tokens. It is already in `.gitignore`.
 - **Use `.env.example`**: Share this file instead (it only has placeholders).
 - **Sanitize `Code.gs`**: The version in `scripts/google_apps_script.js` has a placeholder for the token. Keep it that way in Git! Only put the real token in the Google Script editor itself.
+## 🧼 Removing the Google Banner
+By default, Google shows a header that says "This application was created by a Google Apps Script user."
+
+### Option 1: Embedding (Recommended)
+The banner automatically disappears if you embed the app:
+- **Google Sites**: Create a Google Site and use the "Embed" tool with your Web App URL.
+- **Custom Site**: Use an `<iframe>` (The code is pre-configured to allow this).
+
+### Option 2: Official Verification
+To remove the banner and the "Unverified" screen for everyone:
+1. **Google Cloud Project**:
+   - Go to Cloud Console and create a Standard Project.
+   - In Apps Script, go to **Settings > Google Cloud Platform (GCP) Project** and link it.
+2. **OAuth Consent Screen**:
+   - Set up the consent screen in Cloud Console (Add app logo, support email, etc.).
+3. **Verification Request**:
+   - Submit for Google verification. This requires an official domain and privacy policy.
+
+## 🏢 Workspace "Internal" Advantage
+If you are using a Google Workspace (Company) account:
+- Go to the **OAuth Consent Screen** in Cloud Console.
+- Set the User Type to **Internal**.
+- This will remove the "Unverified App" screen for everyone in your company **without needing a review from Google**.
