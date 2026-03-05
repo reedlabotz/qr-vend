@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #f5f5f5;
+  --color-brand-secondary: #a3a3a3;
+  --color-brand-bg: #0a0a0a;
+  --color-brand-card: #171717;
+  --color-brand-border: #262626;
+}
+
+:root {
+  background-color: var(--color-brand-bg);
+  color: var(--color-brand-primary);
+}
+
+body {
+  @apply antialiased min-h-screen;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Custom transitions and glass effects */
+.glass-effect {
+  @apply bg-brand-card border border-brand-border shadow-xl rounded-xl;
+}
+
+.btn-hover {
+  @apply transition-all duration-200 active:scale-95 text-center;
+}
