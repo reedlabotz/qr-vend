@@ -53,32 +53,9 @@ export default function App() {
     setSelectedClaim(null);
   };
 
-  const handleStart = async () => {
-    setIsThinking(true);
+  const handleStart = () => {
     setError(null);
-    try {
-      const url = await sheetService.fetchNextUrl();
-      if (!url) {
-        setError("No more survey URLs available!");
-      } else if (currentUser) {
-        // Early claim to reserve the URL
-        const placeholder: ClaimData = {
-          recipientName: 'RESERVING...',
-          recipientPhone: 'RESERVING...',
-          location: 'Office',
-          claimedBy: currentUser.name,
-          timestamp: new Date().toISOString(),
-          url,
-        };
-        await sheetService.claimUrl(placeholder);
-        setCurrentUrl(url);
-        setScreen('FORM');
-      }
-    } catch {
-      setError(t('issue_btn'));
-    } finally {
-      setIsThinking(false);
-    }
+    setScreen('FORM');
   };
 
   const handleSubmit = async (location: 'Office' | 'Field') => {
@@ -91,19 +68,20 @@ export default function App() {
 
     setIsThinking(true);
     try {
-      const claim: ClaimData = {
+      const claim: Omit<ClaimData, 'url'> = {
         recipientName: formData.name,
         recipientPhone: formData.phone,
         location,
         claimedBy: currentUser.name,
         timestamp: new Date().toISOString(),
-        url: currentUrl,
       };
 
-      await sheetService.updateClaim(claim);
+      // Atomic Fetch & Claim
+      const assignedUrl = await sheetService.claimNextUrl(claim as ClaimData);
+      setCurrentUrl(assignedUrl);
 
-      const qrUrl = await QRCodeComponent.toDataURL(currentUrl, {
-        width: 600,
+      const qrUrl = await QRCodeComponent.toDataURL(assignedUrl, {
+        width: 400,
         margin: 2,
         color: {
           dark: '#000000',
@@ -113,8 +91,9 @@ export default function App() {
 
       setQrCodeDataUrl(qrUrl);
       setScreen('RESULT');
-    } catch {
-      setError("Failed to finalize survey claim.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to finalize survey claim.";
+      setError(message);
     } finally {
       setIsThinking(false);
     }
@@ -139,8 +118,8 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const qrUrl = await QRCodeComponent.toDataURL(claim.url, {
-        width: 600,
+      const qrUrl = await QRCodeComponent.toDataURL(claim.url, { // Kept claim.url as 'url' is not defined in this scope
+        width: 400,
         margin: 2,
       });
       setQrCodeDataUrl(qrUrl);
@@ -156,6 +135,12 @@ export default function App() {
   const handleUnclaim = async () => {
     const url = currentUrl || selectedClaim?.url;
     if (!url) return;
+
+    // If we're just on the form, we haven't claimed yet, so just reset locally
+    if (screen === 'FORM') {
+      resetFlow();
+      return;
+    }
 
     setIsThinking(true);
     setError(null);
@@ -188,21 +173,23 @@ export default function App() {
       </AnimatePresence>
 
       {/* Persistent Header */}
-      {currentUser && (
-        <div className="flex justify-between items-center mb-8 px-2">
-          <div className="flex flex-col">
-            <span className="text-xs uppercase tracking-widest text-zinc-400 font-bold">{t('user_label')}</span>
-            <span className="text-base font-medium text-white">{currentUser.name}</span>
+      {
+        currentUser && (
+          <div className="flex justify-between items-center mb-8 px-2">
+            <div className="flex flex-col">
+              <span className="text-xs uppercase tracking-widest text-zinc-400 font-bold">{t('user_label')}</span>
+              <span className="text-base font-medium text-white">{currentUser.name}</span>
+            </div>
+            <button
+              onClick={() => { setCurrentUser(null); setScreen('LOGIN'); }}
+              className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm"
+            >
+              <LogOut size={16} />
+              {t('switch_user')}
+            </button>
           </div>
-          <button
-            onClick={() => { setCurrentUser(null); setScreen('LOGIN'); }}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm"
-          >
-            <LogOut size={16} />
-            {t('switch_user')}
-          </button>
-        </div>
-      )}
+        )
+      }
 
       <AnimatePresence mode="wait">
         {screen === 'LOGIN' && (
@@ -466,7 +453,7 @@ export default function App() {
                   >
                     <div className="text-left space-y-1">
                       <p className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
-                        {claim.recipientName}
+                        {claim.id} • {claim.recipientName}
                       </p>
                       <div className="flex items-center gap-2 text-sm text-zinc-300">
                         <span>{claim.location === 'Office' ? t('office') : t('field')}</span>
@@ -488,6 +475,6 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 }

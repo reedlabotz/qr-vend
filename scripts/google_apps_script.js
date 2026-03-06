@@ -45,6 +45,7 @@ function doPost(e) {
  * NATIVE MODE (for Hosted Web App via google.script.run)
  */
 function gsFetchNextUrl() { return fetchNextUrl(); }
+function gsClaimNextUrl(claim) { return claimNextUrl(claim); }
 function gsClaimUrl(claim) { return claimUrl(claim); }
 function gsUpdateClaim(claim) { return updateClaim(claim); }
 function gsUnclaimUrl(url) { return unclaimUrl(url); }
@@ -80,19 +81,16 @@ function handleApi(action, params) {
     throw new Error("Unknown action: " + action);
 }
 
-// Logic implementations used by both API and Native modes
+// Logic implementations using the consolidated 'URLs' sheet
 function fetchUrls() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet();
     const urlSheet = sheet.getSheetByName('URLs');
-    const urlData = urlSheet.getDataRange().getValues();
+    const data = urlSheet.getDataRange().getValues();
 
-    const claimsSheet = sheet.getSheetByName('Claims');
-    const claimsData = claimsSheet.getDataRange().getValues();
-    const claimedUrls = new Set(claimsData.slice(1).map(row => row[5])); // Column F: URL
-
-    return urlData.slice(1).map(row => ({
-        url: row[1], // Column B: URL
-        claimedBy: claimedUrls.has(row[1]) ? "CLAIMED" : ""
+    return data.slice(1).map(row => ({
+        id: row[0],
+        url: row[1],
+        claimedBy: row[3] || "" // Column D: Claimed By
     }));
 }
 
@@ -103,69 +101,61 @@ function fetchNextUrl() {
 }
 
 function claimUrl(claim) {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet();
-    const claimsSheet = sheet.getSheetByName('Claims');
-    claimsSheet.appendRow([
-        claim.recipientName,
-        claim.recipientPhone,
-        claim.location,
-        claim.claimedBy,
-        claim.timestamp,
-        claim.url
-    ]);
+    updateClaim(claim); // Standardize on updateClaim
 }
 
-function updateClaim(claim) {
+function claimNextUrl(claim) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet();
-    const claimsSheet = sheet.getSheetByName('Claims');
-    const claimsData = claimsSheet.getDataRange().getValues();
+    const urlSheet = sheet.getSheetByName('URLs');
+    const data = urlSheet.getDataRange().getValues();
 
-    // Find the row with this URL to update it
-    for (let i = claimsData.length - 1; i >= 1; i--) {
-        if (claimsData[i][5] === claim.url) {
-            const range = claimsSheet.getRange(i + 1, 1, 1, 6);
-            range.setValues([[
-                claim.recipientName,
-                claim.recipientPhone,
-                claim.location,
-                claim.claimedBy,
-                claim.timestamp,
-                claim.url
+    for (let i = 1; i < data.length; i++) {
+        if (!data[i][3]) { // Column D: Claimed By is empty
+            const url = data[i][1]; // Column B
+            urlSheet.getRange(i + 1, 3, 1, 5).setValues([[
+                claim.location,      // Col C
+                claim.claimedBy,     // Col D
+                claim.timestamp,     // Col E
+                claim.recipientName,  // Col F
+                claim.recipientPhone  // Col G
             ]]);
-            return;
+            return url; // Return the assigned URL
         }
     }
-
-    // If not found (fallback), append it
-    claimUrl(claim);
+    throw new Error("No more URLs available!");
 }
 
 function unclaimUrl(url) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet();
-    const claimsSheet = sheet.getSheetByName('Claims');
-    const claimsData = claimsSheet.getDataRange().getValues();
-    for (let i = claimsData.length - 1; i >= 1; i--) {
-        if (claimsData[i][5] === url) {
-            claimsSheet.deleteRow(i + 1);
-            break;
+    const urlSheet = sheet.getSheetByName('URLs');
+    const data = urlSheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+        if (data[i][1] === url) {
+            // Clear Columns C through G (Location, Claimed By, Timestamp, Name, Phone)
+            urlSheet.getRange(i + 1, 3, 1, 5).clearContent();
+            return;
         }
     }
 }
 
 function getRecentClaims(name) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet();
-    const claimsSheet = sheet.getSheetByName('Claims');
-    const data = claimsSheet.getDataRange().getValues();
+    const urlSheet = sheet.getSheetByName('URLs');
+    const data = urlSheet.getDataRange().getValues();
 
     return data.slice(1)
         .filter(row => row[3] === name) // Column D: Claimed By
         .map(row => ({
-            recipientName: row[0],
-            recipientPhone: row[1],
+            id: row[0],
+            // PRIVACY MASKING: 
+            // Only expose ID, Timestamp, and first 2 letters of name.
+            // Omit Phone and URL for history view.
+            recipientName: row[5] ? row[5].substring(0, 2) : "??",
             location: row[2],
-            claimedBy: row[3],
-            timestamp: row[4].toISOString ? row[4].toISOString() : row[4],
-            url: row[5]
+            claimedBy: row[3], // Include the person who claimed it
+            timestamp: row[4] && row[4].toISOString ? row[4].toISOString() : row[4],
+            url: "" // Hidden in history for privacy
         }))
         .reverse();
 }
@@ -173,6 +163,7 @@ function getRecentClaims(name) {
 function getTeam() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet();
     const teamSheet = sheet.getSheetByName('Team');
+    if (!teamSheet) return [];
     const data = teamSheet.getDataRange().getValues();
     return data.slice(1).map(row => ({ name: row[0], language: row[1] }));
 }

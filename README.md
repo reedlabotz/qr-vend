@@ -18,11 +18,14 @@ Ensure your Google Sheet has the following tabs:
 - **`URLs`**:
   - Column A: `ID`
   - Column B: `URL`
+  - Column C: `Location`
+  - Column D: `Claimed By`
+  - Column E: `Timestamp`
+  - Column F: `Recipient Name`
+  - Column G: `Recipient Phone`
 - **`Team`**:
   - Column A: `Name`
   - Column B: `Language` (english, spanish, french, or bangla)
-- **`Claims`**: (Keep empty, used for logging)
-  - Columns for: Recipient Name, Phone, Location, Claimed By, Timestamp, URL.
 
 ### 3. Deploy to Apps Script
 1. In your Google Sheet, go to **Extensions > Apps Script**.

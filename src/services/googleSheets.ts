@@ -86,6 +86,10 @@ class GoogleSheetService implements SheetService {
         await this.callgs('gsUpdateClaim', claim);
     }
 
+    async claimNextUrl(claim: ClaimData): Promise<string> {
+        return await this.callgs('gsClaimNextUrl', claim);
+    }
+
     async unclaimUrl(url: string): Promise<void> {
         await this.callgs('gsUnclaimUrl', url);
     }

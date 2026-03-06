@@ -2,6 +2,7 @@ import { type TeamMember } from './i18n';
 import { googleSheetService } from './googleSheets';
 
 export interface ClaimData {
+  id?: string;
   recipientName: string;
   recipientPhone: string;
   location: 'Office' | 'Field';
@@ -14,6 +15,7 @@ export interface SheetService {
   fetchNextUrl(): Promise<string | null>;
   claimUrl(data: ClaimData): Promise<void>;
   updateClaim(data: ClaimData): Promise<void>;
+  claimNextUrl(data: ClaimData): Promise<string>;
   unclaimUrl(url: string): Promise<void>;
   getRecentClaims(email: string): Promise<ClaimData[]>;
   fetchTeamMembers(): Promise<TeamMember[]>;
@@ -55,6 +57,18 @@ class MockSheetService implements SheetService {
     } else {
       await this.claimUrl(data);
     }
+  }
+
+  async claimNextUrl(data: ClaimData): Promise<string> {
+    const claims = this.getAllClaims();
+    const claimedUrls = new Set(claims.map(c => c.url));
+    const url = this.urls.find(u => !claimedUrls.has(u));
+    if (!url) throw new Error("No URLs left!");
+
+    const finalData = { ...data, url };
+    claims.unshift(finalData);
+    localStorage.setItem('qr_vend_claims', JSON.stringify(claims));
+    return url;
   }
 
   async unclaimUrl(url: string): Promise<void> {
