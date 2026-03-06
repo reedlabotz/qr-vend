@@ -155,7 +155,7 @@ function getRecentClaims(name) {
             location: row[2],
             claimedBy: row[3], // Include the person who claimed it
             timestamp: row[4] && row[4].toISOString ? row[4].toISOString() : row[4],
-            url: "" // Hidden in history for privacy
+            url: row[1] // RESTORED: Expose URL for history re-viewing
         }))
         .reverse();
 }

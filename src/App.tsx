@@ -10,7 +10,6 @@ type Screen = 'LOGIN' | 'START' | 'FORM' | 'RESULT' | 'HISTORY';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('LOGIN');
-  const [loading, setLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
@@ -64,7 +63,7 @@ export default function App() {
       return;
     }
     setError(null);
-    if (!currentUrl || !currentUser) return;
+    if (!currentUser) return;
 
     setIsThinking(true);
     try {
@@ -115,10 +114,11 @@ export default function App() {
   };
 
   const viewHistoryItem = async (claim: ClaimData) => {
-    setLoading(true);
+    if (!claim.url) return;
+    setIsThinking(true);
     setError(null);
     try {
-      const qrUrl = await QRCodeComponent.toDataURL(claim.url, { // Kept claim.url as 'url' is not defined in this scope
+      const qrUrl = await QRCodeComponent.toDataURL(claim.url, {
         width: 400,
         margin: 2,
       });
@@ -128,7 +128,7 @@ export default function App() {
     } catch {
       setError("Failed to generate QR for history item.");
     } finally {
-      setLoading(false);
+      setIsThinking(false);
     }
   };
 
@@ -243,14 +243,14 @@ export default function App() {
             <div className="w-full space-y-4 max-w-xs">
               <button
                 onClick={handleStart}
-                disabled={loading}
+                disabled={isThinking}
                 className="w-full h-40 glass-effect btn-hover flex flex-col items-center justify-center gap-4 hover:border-zinc-500/50"
               >
                 <div className="p-4 rounded-full bg-white/5 border border-white/10 text-white/70">
                   <LayoutGrid size={32} strokeWidth={1.5} />
                 </div>
                 <span className="text-xl font-medium text-white">
-                  {loading ? t('issue_btn') : t('issue_new')}
+                  {isThinking ? t('issue_btn') : t('issue_new')}
                 </span>
               </button>
 
@@ -335,7 +335,7 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={() => handleSubmit('Office')}
-                    disabled={loading}
+                    disabled={isThinking}
                     className="flex flex-col items-center gap-4 p-6 rounded-xl border border-zinc-700 hover:border-white hover:bg-white/5 active:bg-white/10 transition-all group"
                   >
                     <Building2 size={28} strokeWidth={1.5} className="text-zinc-400 group-hover:text-white" />
@@ -343,7 +343,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => handleSubmit('Field')}
-                    disabled={loading}
+                    disabled={isThinking}
                     className="flex flex-col items-center gap-4 p-6 rounded-xl border border-zinc-700 hover:border-white hover:bg-white/5 active:bg-white/10 transition-all group"
                   >
                     <MapPin size={28} strokeWidth={1.5} className="text-zinc-400 group-hover:text-white" />
@@ -402,11 +402,11 @@ export default function App() {
 
                 <button
                   onClick={handleUnclaim}
-                  disabled={loading}
+                  disabled={isThinking}
                   className="w-full py-4 px-6 border border-zinc-800 hover:border-red-900/50 hover:bg-red-950/10 text-zinc-500 hover:text-red-400 rounded-xl flex items-center justify-center gap-3 transition-all"
                 >
                   <X size={20} />
-                  {loading ? t('unclaiming') : t('cancel')}
+                  {isThinking ? t('unclaiming') : t('cancel')}
                 </button>
 
                 <button
